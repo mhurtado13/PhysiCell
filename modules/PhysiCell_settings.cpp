@@ -33,7 +33,7 @@
 #                                                                             #
 # BSD 3-Clause License (see https://opensource.org/licenses/BSD-3-Clause)     #
 #                                                                             #
-# Copyright (c) 2015-2024, Paul Macklin and the PhysiCell Project             #
+# Copyright (c) 2015-2021, Paul Macklin and the PhysiCell Project             #
 # All rights reserved.                                                        #
 #                                                                             #
 # Redistribution and use in source and binary forms, with or without          #
@@ -132,7 +132,6 @@ PhysiCell_Settings::PhysiCell_Settings()
 	limits_substrate_plot = false;
 	min_concentration = -1.0;
 	max_concentration = -1.0;
-	svg_substrate_colormap = "YlOrRd";
 
 	intracellular_save_interval = 60;  
 	enable_intracellular_saves = false; 
@@ -208,13 +207,7 @@ void PhysiCell_Settings::read_from_pugixml( void )
 			min_concentration = xml_get_double_value(node_plot_substrate, "min_conc");
 			max_concentration = xml_get_double_value(node_plot_substrate, "max_conc");
 		}
-		pugi::xml_node colormap_node = xml_find_node( node_plot_substrate, "colormap");
-		if (colormap_node)
-		{
-			svg_substrate_colormap = xml_get_my_string_value(colormap_node);
-		}
-	}
-
+	};
 	node = node.parent(); 
 
 	node = xml_find_node( node , "intracellular_data" ); 
@@ -237,53 +230,32 @@ void PhysiCell_Settings::read_from_pugixml( void )
 	
 	pugi::xml_node node_options; 
 	
-	node_options = xml_find_node( physicell_config_root , "options" );
-	if (node_options)
+	node_options = xml_find_node( physicell_config_root , "options" ); 
+	if( node_options )
 	{
-		bool settings;
-
-		// look for legacy_random_points_on_sphere_in_divide
-		settings = xml_get_bool_value(node_options, "legacy_random_points_on_sphere_in_divide");
-		if (settings)
+		bool settings; 
+		
+		// look for legacy_random_points_on_sphere_in_divide 
+		settings = 
+			xml_get_bool_value( node_options, "legacy_random_points_on_sphere_in_divide" ); 
+		if( settings )
 		{
-			std::cout << "setting legacy unif" << std::endl;
-			extern std::vector<double> (*cell_division_orientation)(void);
-			cell_division_orientation = LegacyRandomOnUnitSphere;
+			std::cout << "setting legacy unif" << std::endl; 
+			extern std::vector<double> (*cell_division_orientation)(void); 
+			cell_division_orientation = LegacyRandomOnUnitSphere; 
+		}
+	
+		settings = xml_get_bool_value( node_options, "disable_automated_spring_adhesions" ); 
+		if( settings )
+		{
+			std::cout << "Disabling automated spring adhesions and detachments!" << std::endl; 
+			PhysiCell_settings.disable_automated_spring_adhesions = true; 
 		}
 
-		settings = xml_get_bool_value(node_options, "disable_automated_spring_adhesions");
-		if (settings)
-		{
-			std::cout << "Disabling automated spring adhesions and detachments!" << std::endl;
-			PhysiCell_settings.disable_automated_spring_adhesions = true;
-		}
+		// other options can go here, eventually 
 
-		pugi::xml_node random_seed_node = xml_find_node(node_options, "random_seed");
-		std::string random_seed = ""; // default is system clock, even if this element is not present
-		if (random_seed_node)
-		{ random_seed = xml_get_my_string_value(random_seed_node); }
-
-		if (random_seed == "" || random_seed == "random" || random_seed == "system_clock")
-		{
-			std::cout << "Using system clock for random seed" << std::endl;
-			SeedRandom();
-		}
-		else
-		{
-			int seed;
-			try
-			{ seed = std::stoi(random_seed); }
-			catch(const std::exception& e)
-			{
-				std::cout << "ERROR: " << random_seed << " is not a valid random seed. It must be an integer. Fix this within <options>." << std::endl;
-				exit(-1);
-			}
-			SeedRandom(seed);
-		}
-
-		// other options can go here, eventually
 	}
-
+	
 	// domain options 
 	
 	node = xml_find_node( physicell_config_root , "domain" );
@@ -470,24 +442,54 @@ Parameters<T>::Parameters()
 template <class T>
 void Parameters<T>::add_parameter( std::string my_name )
 {
-	// this function is not currently (2024-06-03) called in the code, so these defaults largely do not matter; very unlikely others are directly calling this function, let alone this implementation
-	T my_value = T(); // for {int, double, bool, string} this will be {0, 0.0, false, ""} (this would technically change the behavior for strings since it is hardcoded above to default to "none", but nobody should rely on the default value of a string being "none")
-	return add_parameter( my_name , my_value );
+	Parameter<T>* pNew; 
+	pNew = new Parameter<T> ;
+	pNew->name = my_name ; 
+	
+	int n = parameters.size(); 
+	
+	parameters.push_back( *pNew ); 
+	
+	name_to_index_map[ my_name ] = n; 
+	return; 
 }
 
 template <class T>
 void Parameters<T>::add_parameter( std::string my_name , T my_value )
 {
-	// this function is not currently (2024-06-03) called in the code, so these defaults largely do not matter; very unlikely others are directly calling this function, let alone this implementation
-	std::string my_units = "dimensionless"; // technically this would change the behavior for strings since it is hardcoded above to default to "none", but nobody should be using units on strings; also, if the xml does not have units, then "dimensionless" is used even for strings
-	return add_parameter( my_name , my_value , my_units );
+	Parameter<T>* pNew; 
+	pNew = new Parameter<T> ;
+	pNew->name = my_name ; 
+	pNew->value = my_value; 
+	
+	int n = parameters.size(); 
+	
+	parameters.push_back( *pNew ); 
+	
+	name_to_index_map[ my_name ] = n; 
+	return; 
 }
+/*
+template <class T>
+void Parameters<T>::add_parameter( std::string my_name , T my_value )
+{
+	Parameter<T>* pNew; 
+	pNew = new Parameter<T> ;
+	pNew->name = my_name ; 
+	pNew->value = my_value; 
+	
+	int n = parameters.size(); 
+	
+	parameters.push_back( *pNew ); 
+	
+	name_to_index_map[ my_name ] = n; 
+	return; 
+}
+*/
 
 template <class T>
 void Parameters<T>::add_parameter( std::string my_name , T my_value , std::string my_units )
 {
-	assert_not_exists(my_name);
-
 	Parameter<T>* pNew; 
 	pNew = new Parameter<T> ;
 	pNew->name = my_name ; 
@@ -502,25 +504,32 @@ void Parameters<T>::add_parameter( std::string my_name , T my_value , std::strin
 	return; 
 }
 
+/*
+template <class T>
+void Parameters<T>::add_parameter( std::string my_name , T my_value , std::string my_units )
+{
+	Parameter<T>* pNew; 
+	pNew = new Parameter<T> ;
+	pNew->name = my_name ; 
+	pNew->value = my_value; 
+	pNew->units = my_units; 
+	
+	int n = parameters.size(); 
+	
+	parameters.push_back( *pNew ); 
+	
+	name_to_index_map[ my_name ] = n; 
+	return; 
+}
+*/
+
 template <class T>
 void Parameters<T>::add_parameter( Parameter<T> param )
 {
-	assert_not_exists(param.name);
-
 	int n = parameters.size(); 
 	parameters.push_back( param); 
 	name_to_index_map[ param.name ] = n; 
 	return; 
-}
-
-template <class T>
-void Parameters<T>::assert_not_exists( std::string search_name )
-{
-	if( find_index( search_name ) == -1 )
-	{ return; }
-
-	std::cout << "ERROR: Parameter " << search_name << " already exists. Make sure all parameters (of a given type) have unique names." << std::endl;
-	exit(-1);
 }
 
 std::ostream& operator<<( std::ostream& os , const User_Parameters up )
@@ -546,33 +555,44 @@ void User_Parameters::read_from_pugixml( pugi::xml_node parent_node )
 		{ units = "dimensionless"; } 
 		
 		std::string type = node1.attribute( "type" ).value();
-
-		if (type == "bool")
+		
+		bool done = false ; 
+		if( type == "bool" && done == false )
 		{
-			bool value = xml_get_my_bool_value(node1);
-			bools.add_parameter(name, value, units);
+			bool value = xml_get_my_bool_value( node1 ); 
+			bools.add_parameter( name , value, units ); 
+			done = true; 
 		}
-		else if (type == "int")
+		
+		if( type == "int" && done == false )
 		{
-			int value = xml_get_my_int_value(node1);
-			ints.add_parameter(name, value, units);
+			int value = xml_get_my_int_value( node1 ); 
+			ints.add_parameter( name , value, units ); 
+			done = true; 
 		}
-		else if (type == "double")
+		
+		if( type == "double" && done == false )
 		{
-			double value = xml_get_my_double_value(node1);
-			doubles.add_parameter(name, value, units);
+			double value = xml_get_my_double_value( node1 ); 
+			doubles.add_parameter( name , value, units ); 
+			done = true; 
 		}
-		else if (type == "string")
+				
+		if( done == false && type == "string" )
 		{
-			std::string value = xml_get_my_string_value(node1);
-			strings.add_parameter(name, value, units);
+			std::string value = xml_get_my_string_value( node1 ); 
+			strings.add_parameter( name, value , units ); 
+			done = true; 
 		}
-		else // default if no type specified
+		
+		/* default if no type specified: */
+		if( done == false )
 		{
-			double value = xml_get_my_double_value(node1);
-			doubles.add_parameter(name, value, units);
+			double value = xml_get_my_double_value( node1 ); 
+			doubles.add_parameter( name , value, units ); 
+			done = true; 
 		}
-
+		
 		node1 = node1.next_sibling(); 
 		i++; 
 	}
@@ -891,19 +911,8 @@ bool setup_microenvironment_from_XML( pugi::xml_node root_node )
 	
 	// track internalized substrates in each agent? 
 	default_microenvironment_options.track_internalized_substrates_in_each_agent 
-		= xml_get_bool_value( node, "track_internalized_substrates_in_each_agent" );
-
-	node = xml_find_node(node, "initial_condition");
-	if (node)
-	{
-		default_microenvironment_options.initial_condition_from_file_enabled = node.attribute("enabled").as_bool();
-		if (default_microenvironment_options.initial_condition_from_file_enabled)
-		{
-			default_microenvironment_options.initial_condition_file_type = node.attribute("type").as_string();
-			default_microenvironment_options.initial_condition_file = xml_get_string_value(node, "filename");
-		}
-	}
-
+		= xml_get_bool_value( node, "track_internalized_substrates_in_each_agent" ); 
+	
 	// not yet supported : read initial conditions 
 	/*
 	// read in initial conditions from an external file 

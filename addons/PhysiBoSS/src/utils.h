@@ -17,14 +17,12 @@ public:
     double scaling;
     int smoothing;
     double smoothed_value;
-    bool use_for_dead;
-    
-    MaBoSSInput(std::string physicell_name, std::string intracellular_name, std::string action, double threshold, double inact_threshold, int smoothing, bool use_for_dead) : physicell_name(physicell_name), intracellular_name(intracellular_name), action(action), threshold(threshold), inact_threshold(inact_threshold), smoothing(smoothing), use_for_dead(use_for_dead){
+    MaBoSSInput(std::string physicell_name, std::string intracellular_name, std::string action, double threshold, double inact_threshold, int smoothing) : physicell_name(physicell_name), intracellular_name(intracellular_name), action(action), threshold(threshold), inact_threshold(inact_threshold), smoothing(smoothing) {
         type = NODE;
         smoothed_value = 0;
     }
 
-    MaBoSSInput(std::string physicell_name, std::string intracellular_parameter, double scaling, int smoothing, bool use_for_dead) : physicell_name(physicell_name), intracellular_parameter(intracellular_parameter), scaling(scaling), smoothing(smoothing), use_for_dead(use_for_dead) {
+    MaBoSSInput(std::string physicell_name, std::string intracellular_parameter, double scaling, int smoothing) : physicell_name(physicell_name), intracellular_parameter(intracellular_parameter), scaling(scaling), smoothing(smoothing) {
         type = PARAMETER;
         smoothed_value = 0;
     }
@@ -85,15 +83,13 @@ public:
     int smoothing;
     double probability;
     bool initialized = false;
-    int steepness;
-    bool use_for_dead;
 
     MaBoSSOutput(std::string physicell_name, std::string intracellular_name,
                 std::string action, double value, double base_value,
-                int smoothing, int steepness, bool use_for_dead)
+                int smoothing)
         : physicell_name(physicell_name), intracellular_name(intracellular_name),
         action(action), value(value), base_value(base_value),
-        smoothing(smoothing), steepness(steepness), use_for_dead(use_for_dead) {
+        smoothing(smoothing) {
     probability = 0.5;
     }
 
@@ -119,10 +115,10 @@ public:
     }
 
     if (action == "activation") {
-        double hill = PhysiCell::Hill_response_function(hill_input * 2, 1, steepness);
+        double hill = PhysiCell::Hill_response_function(hill_input * 2, 1, 10);
         return (value - base_value) * hill + base_value;
     } else if (action == "inhibition") {
-        double hill = PhysiCell::Hill_response_function(hill_input * 2, 1, steepness);
+        double hill = PhysiCell::Hill_response_function(hill_input * 2, 1, 10);
         return ((value - base_value) * (1 - hill)) + base_value;
     }
 

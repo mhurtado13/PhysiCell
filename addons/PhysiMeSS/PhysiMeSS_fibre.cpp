@@ -49,15 +49,15 @@ std::vector<PhysiCell::Cell_Definition*>* getFibreCellDefinitions() {
     
     return result;
 }
-
+	
 PhysiMeSS_Fibre::PhysiMeSS_Fibre() 
 {
     // std::cout << "PhysiMeSS_Fibre constructor,";
     fibres_crosslinkers.clear();
     fibres_crosslink_point.clear();
     
-    // mLength = PhysiCell::NormalRandom(PhysiCell::parameters.doubles("fibre_length"), PhysiCell::parameters.doubles("length_normdist_sd")) / 2.0;
-    // mRadius = PhysiCell::parameters.doubles("fibre_radius");
+    mLength = PhysiCell::NormalRandom(PhysiCell::parameters.doubles("fibre_length"), PhysiCell::parameters.doubles("length_normdist_sd")) / 2.0;
+    mRadius = PhysiCell::parameters.doubles("fibre_radius");
     // std::cout << "mLength = " << mLength;
     X_crosslink_count = 0;
     fail_count = 0;
@@ -65,12 +65,10 @@ PhysiMeSS_Fibre::PhysiMeSS_Fibre()
 
 void PhysiMeSS_Fibre::assign_fibre_orientation() 
 { 
-    mLength = PhysiCell::NormalRandom(this->custom_data["fibre_length"], this->custom_data["length_normdist_sd"]) / 2.0;
-    mRadius = this->custom_data["fibre_radius"];
     this->assign_orientation();
     if (default_microenvironment_options.simulate_2D) {
-        if (this->custom_data["anisotropic_fibres"] > 0.5){
-            double theta = PhysiCell::NormalRandom(this->custom_data["fibre_angle"], this->custom_data["angle_normdist_sd"]);
+        if (PhysiCell::parameters.bools("anisotropic_fibres")){
+            double theta = PhysiCell::NormalRandom(PhysiCell::parameters.doubles("fibre_angle"),PhysiCell::parameters.doubles("angle_normdist_sd"));
             this->state.orientation[0] = cos(theta);
             this->state.orientation[1] = sin(theta);
         }
@@ -137,7 +135,7 @@ void PhysiMeSS_Fibre::check_out_of_bounds(std::vector<double>& position)
                 break after 10 failures
                 It needs re-writing at some stage to handle the 3D case properly */
 
-    if (this->custom_data["anisotropic_fibres"]) {
+    if (PhysiCell::parameters.bools("anisotropic_fibres")) {
         if (xs < Xmin || xe > Xmax || xe < Xmin || xs > Xmax ||
             ys < Ymin || ye > Ymax || ye < Ymin || ys > Ymax) {
             fail_count = 10;
@@ -207,7 +205,7 @@ void PhysiMeSS_Fibre::add_potentials_from_cell(PhysiMeSS_Cell* cell)
         // cell-fibre pushing only if fibre no crosslinks
         if (X_crosslink_count == 0) {
             //fibre pushing turned on
-            if (cell->custom_data["fibre_pushing"] > 0.5) {
+            if (PhysiCell::parameters.bools("fibre_pushing")) {
                 // as per PhysiCell
                 static double simple_pressure_scale = 0.027288820670331;
                 // temp_r = 1 - distance/R;
@@ -229,7 +227,7 @@ void PhysiMeSS_Fibre::add_potentials_from_cell(PhysiMeSS_Cell* cell)
             }
 
             // fibre rotation turned on (2D)
-            if (cell->custom_data["fibre_rotation"] > 0.5) {
+            if (PhysiCell::parameters.bools("fibre_rotation")) {
                 std::vector<double> old_orientation(3, 0.0);
                 for (int i = 0; i < 2; i++) {
                     old_orientation[i] = state.orientation[i];
@@ -237,7 +235,7 @@ void PhysiMeSS_Fibre::add_potentials_from_cell(PhysiMeSS_Cell* cell)
 
                 double moment_arm_magnitude = sqrt(
                         point_of_impact[0] * point_of_impact[0] + point_of_impact[1] * point_of_impact[1]);
-                double impulse = cell->custom_data["fibre_sticky"]*(*cell).phenotype.motility.migration_speed * moment_arm_magnitude;
+                double impulse = PhysiCell::parameters.doubles("fibre_sticky")*(*cell).phenotype.motility.migration_speed * moment_arm_magnitude;
                 double fibre_length = 2 * mLength;
                 double angular_velocity = impulse / (0.5 * fibre_length * fibre_length);
                 double angle = angular_velocity;
@@ -248,7 +246,7 @@ void PhysiMeSS_Fibre::add_potentials_from_cell(PhysiMeSS_Cell* cell)
         }
 
         // fibre rotation around other fibre (2D only and fibres intersect at a single point)
-        if (cell->custom_data["fibre_rotation"] > 0.5 && X_crosslink_count == 1) {
+        if (PhysiCell::parameters.bools("fibre_rotation") && X_crosslink_count == 1) {
             double distance_fibre_centre_to_crosslink = 0.0;
             std::vector<double> fibre_centre_to_crosslink(3, 0.0);
             for (int i = 0; i < 2; i++) {
@@ -263,7 +261,7 @@ void PhysiMeSS_Fibre::add_potentials_from_cell(PhysiMeSS_Cell* cell)
             }
             double moment_arm_magnitude = sqrt(
                     point_of_impact[0] * point_of_impact[0] + point_of_impact[1] * point_of_impact[1]);
-            double impulse = cell->custom_data["fibre_sticky"]*(*cell).phenotype.motility.migration_speed * moment_arm_magnitude;
+            double impulse = PhysiCell::parameters.doubles("fibre_sticky")*(*cell).phenotype.motility.migration_speed * moment_arm_magnitude;
             double fibre_length = 2 * mLength;
             double angular_velocity = impulse / (0.5 * fibre_length * fibre_length);
             double angle = angular_velocity;
